@@ -29,7 +29,21 @@ class Bot(irc.bot.SingleServerIRCBot):
                 irc_config.get('ServerPassword')
         )
 
+        logging_level= irc_config.get('LoggingLevel')
         
+        if logging_level is not None:
+            if logging_level.lower() == 'debug':
+                log.setLevel(logging.DEBUG)
+            elif logging_level.lower() == 'info':
+                log.setLevel(logging.INFO)
+            elif logging_level.lower() == 'warning':
+                log.setLevel(logging.WARNING)
+            elif logging_level.lower() == 'info':
+                log.setLevel(logging.INFO)
+            elif logging_level.lower() == 'error':
+                log.setLevel(logging.ERROR)
+            elif logging_level.lower() == 'critical':
+                log.setLevel(logging.CRTICIAL)
 
         additional_args = {}
 
