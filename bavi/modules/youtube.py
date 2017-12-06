@@ -5,24 +5,33 @@ import json
 
 log = logging.getLogger('bavi.modules.youtube')
 
-YOUTUBE_REGEX = r""
+YOUTUBE_REGEX = r"(?:youtube(?:-nocookie)?\.com/(?:[^/]+/./|(?:v|e(?:mbed)?)/|.*?[?&]v=)|youtu\.be/)([^\"&?/ ]{11})"
 
 YT_BASE_API = 'https://www.googleapis.com/youtube/v3/'
 
-compiled_yt_regex = re.compile(YOUTUBE_REGEX)
-
 STRING_FORMAT='[YouTube] {0} | Uploader: {1} | Uploaded: {2} | Length: {3} | Views: {4} | Comments: {5} | {6}+ | {7}-'
+
+compiled_yt_regex = re.compile(YOUTUBE_REGEX)
 
 def init(bot):
     bot.add_command('yt', yt_search_command)
+    bot.add_command('youtube', yt_search_command)
     bot.add_matcher(compiled_yt_regex, yt_search_command, priority='high')
-
+    
 def yt_search_command(bot, source, target, message, **kwargs):
-    log.debug('youtube module triggered on: ' + message)
+    log.debug('youtube search module triggered on: ' + message)
     
-    bot.say(target, yt_search(bot.config['youtube'].get('key'), message))
-    
-def return_formatted_video_info(video_info):
+    #If there is a regex match, then pull video IDs
+    #If no match, then run a youtube search.
+    if 'match' in kwargs:
+        all_ids = compiled_yt_regex.findall(message)
+        
+        for video_id in all_ids:
+            bot.say(target, get_yt_video_info(bot.config['youtube'].get('key'), video_id))
+    else :
+        bot.say(target, yt_search(bot.config['youtube'].get('key'), message))
+        
+def video_info_to_string(video_info):
     
     title = video_info['snippet']['title']
     uploader = video_info['snippet']['channelTitle']
@@ -33,7 +42,6 @@ def return_formatted_video_info(video_info):
     like_count = video_info['statistics']['likeCount']
     dislike_count = video_info['statistics']['dislikeCount']
 
-    
     return STRING_FORMAT.format(title, uploader, uploadDate, length, views, comments, like_count, dislike_count)
     
 def get_yt_video_info(api_key, video_id):
@@ -49,7 +57,7 @@ def get_yt_video_info(api_key, video_id):
     
     yt_response = response.json()['items'][0]
     
-    return return_formatted_video_info(yt_response)
+    return video_info_to_string(yt_response)
     
 def yt_search(api_key, search_string):
     
