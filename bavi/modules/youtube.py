@@ -2,16 +2,20 @@ import logging
 import re
 import requests
 import json
+import dateutil.parser
 
 log = logging.getLogger('bavi.modules.youtube')
 
 YOUTUBE_REGEX = r"(?:youtube(?:-nocookie)?\.com/(?:[^/]+/./|(?:v|e(?:mbed)?)/|.*?[?&]v=)|youtu\.be/)([^\"&?/ ]{11})"
 
-YT_BASE_API = 'https://www.googleapis.com/youtube/v3/'
+DURATION_REGEX = r"PT(\d+H)?(\d+M)?(\d+S)?"
 
-STRING_FORMAT='[YouTube] {0} | Uploader: {1} | Uploaded: {2} | Length: {3} | Views: {4} | Comments: {5} | {6}+ | {7}-'
+YT_BASE_API = "https://www.googleapis.com/youtube/v3/"
+
+STRING_FORMAT="[YouTube] {0} | Uploader: {1} | Uploaded: {2} | Length: {3} | Views: {4} | Comments: {5} | \x0303{6}+\x03 | \x0304{7}-\x03"
 
 compiled_yt_regex = re.compile(YOUTUBE_REGEX)
+compiled_duration_regex = re.compile(DURATION_REGEX)
 
 def init(bot):
     bot.add_command('yt', yt_search_command)
@@ -40,14 +44,41 @@ def video_info_to_string(video_info):
     
     title = video_info['snippet']['title']
     uploader = video_info['snippet']['channelTitle']
-    uploadDate = video_info['snippet']['publishedAt']
-    length = video_info['contentDetails']['duration']
-    views = video_info['statistics']['viewCount']
-    comments = video_info['statistics']['commentCount']
-    like_count = video_info['statistics']['likeCount']
-    dislike_count = video_info['statistics']['dislikeCount']
+    views = human_readable(video_info['statistics']['viewCount'])
+    comments = human_readable(video_info['statistics']['commentCount'])
+    like_count = human_readable(video_info['statistics']['likeCount'])
+    dislike_count = human_readable(video_info['statistics']['dislikeCount'])
+    
+    uploadDate = dateutil.parser.parse(video_info['snippet']['publishedAt']).date()
+    length = parse_iso8601_duration(video_info['contentDetails']['duration'])
 
     return STRING_FORMAT.format(title, uploader, uploadDate, length, views, comments, like_count, dislike_count)
+    
+def parse_iso8601_duration(iso8601_duration):
+    match = compiled_duration_regex.match(iso8601_duration).groups()
+    result = ""
+    
+    hours = int(match[0][:-1]) if match[0] else 0
+    mins = int(match[1][:-1]) if match[1] else 0
+    secs = int(match[2][:-1]) if match[2] else 0
+    
+    result += str(hours) + "h " if hours > 0 else ""
+    result += str(mins) + "m " if mins > 0 else ""
+    result += str(secs) + "s" if secs > 0 else ""
+    
+    return result
+    
+def human_readable(number):
+    suffixes = ['', 'K', 'M', 'T']
+    
+    i = 0
+    number = float(number)
+    
+    while i < len(suffixes) and number > 1000:
+        number /= 1000
+        i += 1
+
+    return str(round(number, 1)).rstrip('.0') + suffixes[i]
     
 def check_yt_response(json_response):
     if 'error' in json_response:
