@@ -69,7 +69,7 @@ def parse_iso8601_duration(iso8601_duration):
     return result
     
 def human_readable(number):
-    suffixes = ['', 'K', 'M', 'T']
+    suffixes = ['', 'K', 'M', 'B', 'T']
     
     i = 0
     number = float(number)
